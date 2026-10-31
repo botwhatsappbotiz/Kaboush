@@ -1,0 +1,15 @@
+.offer-discount{background:#bd4225;color:white;font-size:12px;font-weight:bold}
+.offer-photo-placeholder{display:grid;width:100%;height:100%;place-items:center;background:linear-gradient(135deg,#f6f5f2,#e8e4dd);color:#9a7744;font-size:20px;font-weight:bold}
+.offer-old-price{color:var(--muted);font-size:12px}
+.offer-prices .price{color:#bd4225}
+.offer-dates{margin:0 0 10px;color:var(--muted);font-size:11px}
+.offer-empty{grid-column:1/-1}
+.admin-offer-list{display:grid;gap:10px}
+.admin-offer{display:flex;align-items:center;gap:14px;padding:12px;border:1px solid var(--line);border-radius:12px}
+.admin-offer-info{display:grid;gap:5px;flex:1;min-width:0}
+.admin-offer-image{width:88px;height:88px;flex:none;object-fit:cover;border-radius:10px;background:#f6f5f2}
+.admin-offer-info span,.admin-offer-info small{color:var(--muted);font-size:12px;line-height:1.6}
+.admin-offer-info del{color:var(--muted)}
+.offer-admin-status{padding:5px 9px;border-radius:16px;background:#edf7ef;color:#26703a;font-size:12px;white-space:nowrap}
+.admin-page textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical}
+@media(max-width:600px){.admin-offer{align-items:flex-start;flex-wrap:wrap}.admin-offer-info{flex-basis:calc(100% - 85px)}.admin-offer .admin-product-actions{margin-right:0}.admin-offer .offer-admin-status{order:2}}

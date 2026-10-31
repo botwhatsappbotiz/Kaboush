@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <title>إدارة المتجر | KABOUSH</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="offers.css">
+</head>
+<body class="admin-page">
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="العودة إلى المتجر">
+      <span class="brand-mark">K</span>
+      <span><strong>KABOUSH</strong><small>إدارة المتجر</small></span>
+    </a>
+    <a class="button button-light" href="index.html">العودة إلى المتجر</a>
+  </header>
+
+  <main class="admin-shell">
+    <section class="admin-card" id="authCard">
+      <h1 id="authTitle">دخول صاحب المتجر</h1>
+      <p id="authDescription">سجّل الدخول إلى حساب الإدارة في Firebase.</p>
+      <form id="authForm" class="admin-form"></form>
+      <p id="authStatus" class="admin-help" role="status">تأكد من إعداد Firebase ونشر قواعد الأمان قبل تسجيل الدخول.</p>
+    </section>
+
+    <div id="adminContent" class="hidden">
+      <div class="admin-heading">
+        <div><h1>لوحة إدارة المتجر</h1><p id="adminSyncStatus">جارٍ الاتصال بقاعدة البيانات...</p></div>
+        <button class="button button-light" id="logoutButton" type="button">تسجيل الخروج</button>
+      </div>
+
+      <section class="admin-card">
+        <h2>بيانات التواصل</h2>
+        <form id="settingsForm" class="form-grid">
+          <label>رقم واتساب مع مفتاح الدولة<input id="adminWhatsapp" inputmode="numeric" placeholder="201XXXXXXXXX"></label>
+          <label>رقم الهاتف<input id="adminPhone" inputmode="tel" placeholder="رقم الهاتف"></label>
+          <label class="full-width">مواعيد العمل<input id="adminHours" placeholder="مثال: يوميًا من 10 صباحًا إلى 10 مساءً"></label>
+          <div class="full-width"><button class="button button-gold" type="submit">حفظ بيانات التواصل</button></div>
+        </form>
+      </section>
+
+      <section class="admin-card">
+        <h2 id="offerFormTitle">إضافة عرض</h2>
+        <p>أدخل السعر قبل الخصم وبعده، وسيتم حساب نسبة الخصم تلقائيًا. تظهر العروض خلال فترة سريانها.</p>
+        <form id="offerForm" class="form-grid">
+          <input id="offerId" type="hidden">
+          <label class="full-width">عنوان العرض<input id="offerTitle" required maxlength="100" placeholder="مثال: عرض نهاية الموسم"></label>
+          <label class="full-width">تفاصيل العرض<textarea id="offerDescription" maxlength="500" rows="3" placeholder="اكتب تفاصيل العرض أو شروطه"></textarea></label>
+          <div class="full-width">
+            <fieldset>
+              <legend>صورة العرض (اختياري)</legend>
+              <label><input type="radio" name="offerImageSource" value="url" checked> رابط صورة</label>
+              <label><input type="radio" name="offerImageSource" value="upload"> رفع صورة</label>
+              <label id="offerImageUrlField">رابط الصورة<input id="offerImage" type="text" inputmode="url" placeholder="https://..."></label>
+              <label id="offerImageUploadField" class="hidden">اختر صورة من جهازك<input id="offerImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+              <img id="offerImagePreview" class="image-preview hidden" alt="معاينة صورة العرض">
+              <p id="offerImageStatus" class="admin-help full-width" role="status"></p>
+            </fieldset>
+          </div>
+          <label>السعر قبل الخصم (ج.م)<input id="offerOriginalPrice" type="number" min="0.01" step="0.01" required placeholder="مثال: 500"></label>
+          <label>السعر بعد الخصم (ج.م)<input id="offerDiscountedPrice" type="number" min="0" step="0.01" required placeholder="مثال: 400"></label>
+          <p id="offerDiscountPreview" class="admin-help full-width" aria-live="polite">ستظهر نسبة الخصم تلقائيًا بعد إدخال السعرين.</p>
+          <label>تاريخ بداية العرض (اختياري)<input id="offerStartDate" type="date"></label>
+          <label>تاريخ انتهاء العرض (اختياري)<input id="offerEndDate" type="date"></label>
+          <div class="full-width admin-form-actions">
+            <button class="button button-dark" id="saveOfferButton" type="submit">إضافة العرض</button>
+            <button class="button button-light hidden" id="cancelOfferEditButton" type="button">إلغاء التعديل</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-card">
+        <div class="section-heading"><div><h2>العروض الحالية والمجدولة</h2><p id="offerCount"></p></div></div>
+        <div id="adminOfferList" class="admin-offer-list"></div>
+      </section>
+
+      <section class="admin-card">
+        <h2 id="productFormTitle">إضافة منتج</h2>
+        <form id="productForm" class="form-grid">
+          <input id="productId" type="hidden">
+          <label>اسم المنتج<input id="pName" required maxlength="100" placeholder="اسم المنتج"></label>
+          <label>السعر بالجنيه المصري<input id="pPrice" type="number" min="0" step="0.01" required placeholder="مثال: 250"></label>
+          <label>القسم<select id="pCategory" required></select></label>
+          <label>كود المنتج<input id="pCode" maxlength="40" placeholder="اختياري"></label>
+          <div class="full-width">
+            <fieldset>
+              <legend>صورة المنتج (اختر طريقة واحدة)</legend>
+              <label><input type="radio" name="imageSource" value="url" checked> رابط صورة</label>
+              <label><input type="radio" name="imageSource" value="upload"> رفع صورة</label>
+              <label id="imageUrlField">رابط الصورة<input id="pImage" type="text" inputmode="url" required placeholder="https://..."></label>
+              <label id="imageUploadField" class="hidden">اختر صورة من جهازك<input id="pImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+              <img id="imagePreview" class="image-preview hidden" alt="معاينة صورة المنتج">
+              <p id="imageStatus" class="admin-help full-width" role="status"></p>
+            </fieldset>
+          </div>
+          <label class="full-width">وصف مختصر<input id="pDesc" maxlength="300" placeholder="تفاصيل المنتج"></label>
+          <div class="full-width admin-form-actions">
+            <button class="button button-dark" id="saveProductButton" type="submit">إضافة المنتج</button>
+            <button class="button button-light hidden" id="cancelEditButton" type="button">إلغاء التعديل</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-card">
+        <h2>الأقسام</h2>
+        <form id="categoryForm" class="category-form">
+          <label class="sr-only" for="categoryName">اسم القسم الجديد</label>
+          <input id="categoryName" required maxlength="50" placeholder="اسم القسم الجديد">
+          <button class="button button-dark" type="submit">إضافة قسم</button>
+        </form>
+        <p class="admin-help">لا يمكن حذف قسم يحتوي على منتجات؛ انقل منتجاته إلى قسم آخر أو احذفها أولًا.</p>
+        <div id="categoryList" class="category-list"></div>
+      </section>
+
+      <section class="admin-card">
+        <div class="section-heading"><div><h2>المنتجات الحالية</h2><p id="productCount"></p></div></div>
+        <div id="adminProductList" class="admin-product-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-store.js"></script>
+  <script src="catalog.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

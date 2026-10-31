@@ -1,0 +1,11 @@
+# GitHub Pages settings reference.
+# This file is kept in the repository root for convenient upload.
+# GitHub does not execute Actions workflows from the repository root.
+# Enable automatic publishing in Settings > Pages:
+#   Source: Deploy from a branch
+#   Branch: main
+#   Folder: /(root)
+github_pages:
+  source: branch
+  branch: main
+  folder: /
