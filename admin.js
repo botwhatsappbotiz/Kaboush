@@ -150,9 +150,13 @@ function allCategories() {
 
 function renderCategories() {
   const names = allCategories();
-  $('pCategory').innerHTML = names.map(name =>
+  const selectedCategory = $('pCategory').value;
+  $('pCategory').innerHTML = '<option value="">اختر القسم</option>' + names.map(name =>
     `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`
   ).join('');
+  if (names.includes(selectedCategory)) {
+    $('pCategory').value = selectedCategory;
+  }
   $('categoryList').innerHTML = names.length
     ? names.map(name => {
       const inUse = products.some(product => product.category === name);
