@@ -3,6 +3,17 @@
 .offer-old-price{color:var(--muted);font-size:12px}
 .offer-prices .price{color:#bd4225}
 .offer-dates{margin:0 0 10px;color:var(--muted);font-size:11px}
+.offer-availability{margin:0 0 10px;color:#68604f;font-size:11px;line-height:1.7}
+.offer-actions{gap:7px}
+.offer-actions button{flex:1;min-width:0;padding:10px 6px;border:0;border-radius:9px;font-size:12px;font-weight:bold;transition:transform .18s,background .18s}
+.offer-actions button:hover{transform:translateY(-1px)}
+.offer-details-button{background:#f0eee9;color:#222}
+.offer-book-button{background:var(--green);color:white}
+.offer-modal-prices{display:flex;align-items:center;gap:10px;margin:12px 0}
+.offer-modal-prices del{color:var(--muted);font-size:13px}
+.offer-modal-prices strong{color:#bd4225;font-size:20px}
+.offer-modal-prices span{padding:5px 8px;border-radius:8px;background:#bd4225;color:white;font-size:11px;font-weight:bold}
+.offer-modal-book{width:100%}
 .offer-empty{grid-column:1/-1}
 .admin-offer-list{display:grid;gap:10px}
 .admin-offer{display:flex;align-items:center;gap:14px;padding:12px;border:1px solid var(--line);border-radius:12px}

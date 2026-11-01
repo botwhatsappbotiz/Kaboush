@@ -21,9 +21,9 @@
   <main class="admin-shell">
     <section class="admin-card" id="authCard">
       <h1 id="authTitle">دخول صاحب المتجر</h1>
-      <p id="authDescription">سجّل الدخول إلى حساب الإدارة في Firebase.</p>
+      <p id="authDescription">سجّل الدخول إلى حساب الإدارة في Supabase.</p>
       <form id="authForm" class="admin-form"></form>
-      <p id="authStatus" class="admin-help" role="status">تأكد من إعداد Firebase ونشر قواعد الأمان قبل تسجيل الدخول.</p>
+      <p id="authStatus" class="admin-help" role="status">تأكد من إعداد Supabase وتشغيل ملف SQL قبل تسجيل الدخول.</p>
     </section>
 
     <div id="adminContent" class="hidden">
@@ -49,6 +49,14 @@
           <input id="offerId" type="hidden">
           <label class="full-width">عنوان العرض<input id="offerTitle" required maxlength="100" placeholder="مثال: عرض نهاية الموسم"></label>
           <label class="full-width">تفاصيل العرض<textarea id="offerDescription" maxlength="500" rows="3" placeholder="اكتب تفاصيل العرض أو شروطه"></textarea></label>
+          <fieldset class="full-width option-fieldset">
+            <legend>المقاسات المتاحة</legend>
+            <div class="option-choices" id="offerSizeOptions"></div>
+          </fieldset>
+          <fieldset class="full-width option-fieldset">
+            <legend>الألوان المتاحة</legend>
+            <div class="option-choices color-choices" id="offerColorOptions"></div>
+          </fieldset>
           <div class="full-width">
             <fieldset>
               <legend>صورة العرض (اختياري)</legend>
@@ -97,6 +105,14 @@
             </fieldset>
           </div>
           <label class="full-width">وصف مختصر<input id="pDesc" maxlength="300" placeholder="تفاصيل المنتج"></label>
+          <fieldset class="full-width option-fieldset">
+            <legend>المقاسات المتاحة</legend>
+            <div class="option-choices" id="productSizeOptions"></div>
+          </fieldset>
+          <fieldset class="full-width option-fieldset">
+            <legend>الألوان المتاحة</legend>
+            <div class="option-choices color-choices" id="productColorOptions"></div>
+          </fieldset>
           <div class="full-width admin-form-actions">
             <button class="button button-dark" id="saveProductButton" type="submit">إضافة المنتج</button>
             <button class="button button-light hidden" id="cancelEditButton" type="button">إلغاء التعديل</button>
@@ -123,12 +139,9 @@
   </main>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-  <script src="firebase-config.js"></script>
-  <script src="firebase-store.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-store.js"></script>
   <script src="catalog.js"></script>
   <script src="admin.js"></script>
 </body>

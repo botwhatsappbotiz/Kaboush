@@ -1,5 +1,5 @@
 const LOCAL_ADMIN_PASSWORD_HASH = '715c95ff1aad4ab7651363960f7e6cb12d169b56b45747f2c4e6cd43c5dd9bae';
-const OWNER_EMAIL = 'K.STORE@GMAIL.COM';
+let pendingAuthMessage = '';
 const $ = id => document.getElementById(id);
 let imageProcessing = Promise.resolve();
 let products = [];
@@ -8,6 +8,24 @@ let categories = [];
 let offers = [];
 let unsubscribeStore = [];
 let offerImageProcessing = Promise.resolve();
+const AVAILABLE_SIZES = [
+  'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL',
+  '38', '40', '42', '44', '46', '48', '50', '52'
+];
+const AVAILABLE_COLORS = [
+  { name: 'أسود', value: '#171717' },
+  { name: 'أبيض', value: '#ffffff' },
+  { name: 'رمادي', value: '#888888' },
+  { name: 'كحلي', value: '#1e3a5f' },
+  { name: 'أزرق', value: '#2878c8' },
+  { name: 'أحمر', value: '#d83b3b' },
+  { name: 'أخضر', value: '#27834a' },
+  { name: 'بيج', value: '#d5bd98' },
+  { name: 'بني', value: '#805333' },
+  { name: 'وردي', value: '#e58aab' },
+  { name: 'أصفر', value: '#e5bb35' },
+  { name: 'زيتي', value: '#777844' }
+];
 
 function readStorage(key, fallback) {
   try {
@@ -26,19 +44,25 @@ function showToast(message) {
 }
 
 function renderAuth() {
+  const cloud = window.KABOUSH_STORE && window.KABOUSH_STORE.isConfigured;
   $('authTitle').textContent = 'دخول صاحب المتجر';
-  $('authDescription').textContent = 'أدخل كلمة مرور حساب الإدارة.';
+  $('authDescription').textContent = cloud
+    ? 'أدخل البريد الإلكتروني وكلمة المرور الخاصين بحساب الإدارة.'
+    : 'أدخل كلمة مرور حساب الإدارة.';
   $('authForm').innerHTML = `
+    ${cloud ? '<label>البريد الإلكتروني<input id="adminEmail" type="email" autocomplete="username" required></label>' : ''}
     <label>كلمة المرور<input id="adminPassword" type="password" autocomplete="current-password" required></label>
     <button class="button button-dark" type="submit">دخول</button>`;
-  $('authForm').addEventListener('submit', authenticate);
-  if (!window.KABOUSH_STORE || !window.KABOUSH_STORE.isConfigured) {
+  $('authForm').onsubmit = authenticate;
+  if (!cloud) {
     $('authStatus').textContent = window.KABOUSH_STORE
       ? `${window.KABOUSH_STORE.configurationMessage} يمكنك الدخول محليًا، لكن التغييرات لن تظهر على الأجهزة الأخرى.`
-      : 'تعذر تحميل Firebase. تحقق من اتصال الإنترنت وإعداد ملفات الموقع. يمكنك الدخول محليًا، لكن التغييرات لن تظهر على الأجهزة الأخرى.';
+      : 'تعذر تحميل Supabase. تحقق من اتصال الإنترنت وإعداد ملفات الموقع. يمكنك الدخول محليًا، لكن التغييرات لن تظهر على الأجهزة الأخرى.';
     $('authForm').querySelector('button').disabled = false;
   } else {
-    $('authStatus').textContent = 'استخدم حساب الإدارة الذي أُنشئ في Firebase Authentication.';
+    $('authStatus').textContent = pendingAuthMessage
+      || 'استخدم البريد وكلمة المرور الخاصين بحساب الإدارة المُنشأ في Supabase Authentication.';
+    pendingAuthMessage = '';
   }
 }
 
@@ -58,9 +82,13 @@ async function authenticate(event) {
     return;
   }
   try {
-    await window.KABOUSH_STORE.signIn(OWNER_EMAIL, $('adminPassword').value);
+    await window.KABOUSH_STORE.signIn($('adminEmail').value.trim(), $('adminPassword').value);
   } catch (error) {
-    $('authStatus').textContent = `تعذر تسجيل الدخول إلى Firebase: ${error.code || error.message}`;
+    const wrongCredentials = error.code === 'invalid_credentials'
+      || /invalid login credentials/i.test(error.message || '');
+    $('authStatus').textContent = wrongCredentials
+      ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'
+      : `تعذر تسجيل الدخول إلى Supabase: ${error.code || error.message}`;
   }
 }
 
@@ -92,9 +120,20 @@ function showLocalAdmin() {
 }
 
 async function showAdmin(user) {
-  if (user.uid !== window.KABOUSH_FIREBASE_CONFIG.ownerUid) {
-    $('authStatus').textContent = 'هذا الحساب غير مصرح له بإدارة المتجر.';
-    await window.KABOUSH_STORE.signOut();
+  let allowed = false;
+  try {
+    allowed = await window.KABOUSH_STORE.isAdmin();
+  } catch (error) {
+    pendingAuthMessage = `تعذر التحقق من صلاحيات الإدارة: ${error.message}`;
+  }
+  if (!allowed) {
+    pendingAuthMessage = pendingAuthMessage || 'هذا الحساب غير مصرح له بإدارة المتجر.';
+    $('authStatus').textContent = pendingAuthMessage;
+    try {
+      await window.KABOUSH_STORE.signOut();
+    } catch (error) {
+      showToast(`تعذر تسجيل الخروج: ${error.message}`);
+    }
     return;
   }
   $('authCard').classList.add('hidden');
@@ -109,7 +148,7 @@ async function showAdmin(user) {
       savedCategories,
       savedSettings
     );
-    if (wasSeeded) showToast('تم نقل الكتالوج إلى Firebase ليظهر على جميع الأجهزة.');
+    if (wasSeeded) showToast('تم نقل الكتالوج إلى Supabase ليظهر على جميع الأجهزة.');
     unsubscribeStore.forEach(unsubscribe => unsubscribe());
     unsubscribeStore = [
       window.KABOUSH_STORE.watchProducts(items => {
@@ -132,20 +171,39 @@ async function showAdmin(user) {
         renderOffers();
       }, handleCloudError)
     ];
-    $('adminSyncStatus').textContent = 'متصل بقاعدة Firebase · التغييرات تتزامن مع جميع الأجهزة';
+    $('adminSyncStatus').textContent = 'متصل بقاعدة Supabase · التغييرات تتزامن مع جميع الأجهزة';
   } catch (error) {
-    $('adminSyncStatus').textContent = 'تعذر تحميل قاعدة البيانات. راجع إعداد Firebase وقواعد الأمان.';
-    showToast(`فشل تحميل بيانات المتجر من Firebase: ${error.message}`);
+    $('adminSyncStatus').textContent = 'تعذر تحميل قاعدة البيانات. راجع إعداد Supabase وقواعد الأمان.';
+    showToast(`فشل تحميل بيانات المتجر من Supabase: ${error.message}`);
   }
 }
 
 function handleCloudError(error) {
-  $('adminSyncStatus').textContent = 'انقطع الاتصال بقاعدة البيانات. تحقق من قواعد Firebase والإنترنت.';
+  $('adminSyncStatus').textContent = 'انقطع الاتصال بقاعدة البيانات. تحقق من قواعد Supabase والإنترنت.';
   showToast(error.message || 'تعذر مزامنة بيانات المتجر.');
 }
 
 function allCategories() {
   return [...new Set([...categories, ...products.map(product => product.category)].filter(Boolean))];
+}
+
+function renderOptionChoices(containerId, options, selectedValues = [], preserveUnknown = false) {
+  const container = $(containerId);
+  const selected = new Set(selectedValues);
+  const knownOptions = options.map(option => typeof option === 'string' ? { name: option } : option);
+  const unknownOptions = preserveUnknown
+    ? [...selected].filter(value => !knownOptions.some(option => option.name === value)).map(name => ({ name }))
+    : [];
+  container.innerHTML = [...knownOptions, ...unknownOptions].map(option => `
+    <label class="option-chip ${option.value ? 'has-swatch' : ''}">
+      <input type="checkbox" value="${escapeHTML(option.name)}" ${selected.has(option.name) ? 'checked' : ''}>
+      ${option.value ? `<span class="color-swatch" style="--swatch-color:${option.value}"></span>` : ''}
+      <span>${escapeHTML(option.name)}</span>
+    </label>`).join('');
+}
+
+function selectedOptions(containerId) {
+  return [...$(containerId).querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
 }
 
 function renderCategories() {
@@ -174,6 +232,7 @@ function renderProducts() {
           <strong>${escapeHTML(product.name)}</strong>
           <span>${escapeHTML(product.category)} · ${Number(product.price).toLocaleString('en-US')} ج.م</span>
           <small>الكود: ${escapeHTML(product.id)}</small>
+          <small>المقاسات: ${escapeHTML((product.sizes || []).join('، ') || 'غير محددة')} · الألوان: ${escapeHTML((product.colors || []).join('، ') || 'غير محددة')}</small>
         </div>
         <div class="admin-product-actions">
           <button class="button button-light" type="button" data-edit-product="${escapeHTML(product.id)}">تعديل</button>
@@ -216,6 +275,7 @@ function renderOffers() {
           <strong>${escapeHTML(offer.title)}</strong>
           <span>${escapeHTML(offer.description || 'لا توجد تفاصيل إضافية')}</span>
           <small><del>${Number(offer.originalPrice).toLocaleString('en-US')} ج.م</del> · ${Number(offer.discountedPrice).toLocaleString('en-US')} ج.م · خصم ${percent}%</small>
+          <small>المقاسات: ${escapeHTML((offer.sizes || []).join('، ') || 'غير محددة')} · الألوان: ${escapeHTML((offer.colors || []).join('، ') || 'غير محددة')}</small>
           <small>${dates}</small>
         </div>
         <span class="offer-admin-status">${offerStatus(offer)}</span>
@@ -251,6 +311,8 @@ function resetOfferForm() {
   $('offerImagePreview').src = '';
   $('offerImagePreview').classList.add('hidden');
   $('offerImageStatus').textContent = '';
+  renderOptionChoices('offerSizeOptions', AVAILABLE_SIZES);
+  renderOptionChoices('offerColorOptions', AVAILABLE_COLORS);
   updateOfferImageChoice();
   $('offerFormTitle').textContent = 'إضافة عرض';
   $('saveOfferButton').textContent = 'إضافة العرض';
@@ -264,6 +326,8 @@ function editOffer(id) {
   $('offerId').value = offer.id;
   $('offerTitle').value = offer.title || '';
   $('offerDescription').value = offer.description || '';
+  renderOptionChoices('offerSizeOptions', AVAILABLE_SIZES, offer.sizes || [], true);
+  renderOptionChoices('offerColorOptions', AVAILABLE_COLORS, offer.colors || [], true);
   $('offerImage').value = offer.image || '';
   document.querySelector('input[name="offerImageSource"][value="url"]').checked = true;
   updateOfferImageChoice();
@@ -286,6 +350,8 @@ function resetProductForm() {
   $('imagePreview').src = '';
   $('imagePreview').classList.add('hidden');
   $('imageStatus').textContent = '';
+  renderOptionChoices('productSizeOptions', AVAILABLE_SIZES);
+  renderOptionChoices('productColorOptions', AVAILABLE_COLORS);
   updateImageChoice();
   $('productFormTitle').textContent = 'إضافة منتج';
   $('saveProductButton').textContent = 'إضافة المنتج';
@@ -304,6 +370,8 @@ function editProduct(id) {
   $('pImage').value = product.image;
   showImagePreview(product.image);
   $('pDesc').value = product.desc || '';
+  renderOptionChoices('productSizeOptions', AVAILABLE_SIZES, product.sizes || [], true);
+  renderOptionChoices('productColorOptions', AVAILABLE_COLORS, product.colors || [], true);
   $('productFormTitle').textContent = 'تعديل المنتج';
   $('saveProductButton').textContent = 'حفظ التعديلات';
   $('cancelEditButton').classList.remove('hidden');
@@ -533,6 +601,8 @@ $('offerForm').addEventListener('submit', async event => {
     originalPrice,
     discountedPrice,
     discountPercent: offerDiscountPercent(originalPrice, discountedPrice),
+    sizes: selectedOptions('offerSizeOptions'),
+    colors: selectedOptions('offerColorOptions'),
     startDate,
     endDate
   };
@@ -562,7 +632,7 @@ $('offerForm').addEventListener('submit', async event => {
       offer.imagePath = uploaded.path;
       uploadedImagePath = uploaded.path;
     } catch (error) {
-      showToast(`تعذر رفع صورة العرض إلى Firebase Storage: ${error.message}`);
+      showToast(`تعذر رفع صورة العرض إلى Supabase Storage: ${error.message}`);
       return;
     }
   }
@@ -574,18 +644,18 @@ $('offerForm').addEventListener('submit', async event => {
     renderOffers();
     resetOfferForm();
     showToast(result.imageCleanupFailed
-      ? 'تم حفظ العرض، لكن تعذر حذف صورته القديمة من Firebase Storage.'
+      ? 'تم حفظ العرض، لكن تعذر حذف صورته القديمة من Supabase Storage.'
       : oldId ? 'تم تحديث العرض ومزامنته.' : 'تمت إضافة العرض ومزامنته.');
   } catch (error) {
     if (uploadedImagePath) {
       try {
         await window.KABOUSH_STORE.deleteImage(uploadedImagePath);
       } catch {
-        showToast('فشل حفظ العرض وتعذر تنظيف الصورة المرفوعة. احذف الملف من Firebase Storage.');
+        showToast('فشل حفظ العرض وتعذر تنظيف الصورة المرفوعة. احذف الملف من Supabase Storage.');
         return;
       }
     }
-    showToast(`تعذر حفظ العرض في Firebase: ${error.message}`);
+    showToast(`تعذر حفظ العرض في Supabase: ${error.message}`);
   }
 });
 
@@ -619,10 +689,10 @@ $('adminOfferList').addEventListener('click', async event => {
     offers = offers.filter(item => item.id !== id);
     renderOffers();
     showToast(result.imageCleanupFailed
-      ? 'تم حذف العرض، لكن تعذر حذف صورته من Firebase Storage.'
+      ? 'تم حذف العرض، لكن تعذر حذف صورته من Supabase Storage.'
       : 'تم حذف العرض من المتجر.');
   } catch (error) {
-    showToast(`تعذر حذف العرض من Firebase: ${error.message}`);
+    showToast(`تعذر حذف العرض من Supabase: ${error.message}`);
   }
 });
 
@@ -662,8 +732,8 @@ $('productForm').addEventListener('submit', async event => {
     image,
     imagePath: existingProduct && existingProduct.image === image ? (existingProduct.imagePath || '') : '',
     desc: $('pDesc').value.trim(),
-    sizes: oldId ? (products.find(item => item.id === oldId).sizes || ['M', 'L', 'XL']) : ['M', 'L', 'XL'],
-    colors: oldId ? (products.find(item => item.id === oldId).colors || ['أسود', 'أبيض']) : ['أسود', 'أبيض']
+    sizes: selectedOptions('productSizeOptions'),
+    colors: selectedOptions('productColorOptions')
   };
   if (!window.KABOUSH_STORE || !window.KABOUSH_STORE.isConfigured) {
     const updatedProducts = oldId
@@ -692,7 +762,7 @@ $('productForm').addEventListener('submit', async event => {
       product.imagePath = uploaded.path;
       uploadedImagePath = uploaded.path;
     } catch (error) {
-      showToast(`تعذر رفع الصورة إلى Firebase Storage: ${error.message}`);
+      showToast(`تعذر رفع الصورة إلى Supabase Storage: ${error.message}`);
       return;
     }
   }
@@ -713,11 +783,11 @@ $('productForm').addEventListener('submit', async event => {
       try {
         await window.KABOUSH_STORE.deleteImage(uploadedImagePath);
       } catch {
-        showToast('فشل حفظ المنتج وتعذر تنظيف الصورة المرفوعة. احذف الملف من Firebase Storage.');
+        showToast('فشل حفظ المنتج وتعذر تنظيف الصورة المرفوعة. احذف الملف من Supabase Storage.');
         return;
       }
     }
-    showToast(`تعذر حفظ المنتج في Firebase: ${error.message}`);
+    showToast(`تعذر حفظ المنتج في Supabase: ${error.message}`);
     return;
   }
   resetProductForm();
@@ -755,7 +825,7 @@ $('categoryForm').addEventListener('submit', async event => {
     renderCategories();
     showToast('تمت إضافة القسم ومزامنته.');
   } catch (error) {
-    showToast(`تعذر حفظ القسم في Firebase: ${error.message}`);
+    showToast(`تعذر حفظ القسم في Supabase: ${error.message}`);
   }
 });
 
@@ -785,7 +855,7 @@ $('categoryList').addEventListener('click', async event => {
     renderCategories();
     showToast('تم حذف القسم من المتجر.');
   } catch (error) {
-    showToast(`تعذر حذف القسم من Firebase: ${error.message}`);
+    showToast(`تعذر حذف القسم من Supabase: ${error.message}`);
   }
 });
 
@@ -824,10 +894,10 @@ $('adminProductList').addEventListener('click', async event => {
     renderCategories();
     renderProducts();
     showToast(result.imageCleanupFailed
-      ? 'تم حذف المنتج، لكن تعذر حذف صورته من Firebase Storage.'
+      ? 'تم حذف المنتج، لكن تعذر حذف صورته من Supabase Storage.'
       : 'تم حذف المنتج من المتجر.');
   } catch (error) {
-    showToast(`تعذر حذف المنتج من Firebase: ${error.message}`);
+    showToast(`تعذر حذف المنتج من Supabase: ${error.message}`);
   }
 });
 
@@ -850,6 +920,11 @@ function escapeHTML(value) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[character]));
 }
+
+renderOptionChoices('productSizeOptions', AVAILABLE_SIZES);
+renderOptionChoices('productColorOptions', AVAILABLE_COLORS);
+renderOptionChoices('offerSizeOptions', AVAILABLE_SIZES);
+renderOptionChoices('offerColorOptions', AVAILABLE_COLORS);
 
 if (!window.KABOUSH_STORE || !window.KABOUSH_STORE.isConfigured) {
   renderAuth();
