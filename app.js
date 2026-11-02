@@ -118,11 +118,14 @@ function openCart(){
  $('sendCart').addEventListener('click',sendCart);
 }
 function changeQty(index,delta){cart[index].qty=Math.max(1,Math.min(20,cart[index].qty+delta));saveCart();openCart();}
-function whatsappNumber(){return String(settings.whatsapp||'').replace(/\\D/g,'');}
+function whatsappNumber(){let number=String(settings.whatsapp||'').replace(/\D/g,'');if(number.startsWith('0'))number='20'+number.slice(1);return number;}
 function openWhatsApp(message){const number=whatsappNumber();if(!number){closeModal();toast('تعذر إرسال الطلب حاليًا؛ يرجى التواصل مع المتجر مباشرة.');return;}window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`,'_blank','noopener');}
 function sendCart(){if(!cart.length){toast('أضف منتجًا أولًا');return;}const items=cart.map((item,i)=>{const product=cartItemDetails(item);return product?`${i+1}) ${product.name} — ${item.offerId?'عرض':'كود '+product.code}\\nالمقاس: ${item.size} | اللون: ${item.color} | الكمية: ${item.qty}\\nسعر القطعة: ${money(product.price)} | الإجمالي: ${money(product.price*item.qty)}`:''}).filter(Boolean);const total=cart.reduce((sum,item)=>{const product=cartItemDetails(item);return sum+(product?product.price*item.qty:0);},0);openWhatsApp(`مرحبًا سنتر كابوش 👋\\nأرغب في حجز المنتجات التالية:\\n\\n${items.join('\\n\\n')}\\n\\nالإجمالي التقديري: ${money(total)}\\nهل المنتجات متاحة؟`);}
 function contactWhatsApp(){openWhatsApp('مرحبًا سنتر كابوش، أريد الاستفسار عن المنتجات المتاحة.');}
 function updateContact(){$('phoneText').textContent=settings.phone||'رقم الهاتف يُضاف من إعدادات المتجر.';$('whatsappText').textContent=settings.whatsapp?'رقم واتساب: '+settings.whatsapp:'تواصل معنا مباشرة لمعرفة طرق الحجز.';$('hoursText').textContent=settings.hours||'مواعيد العمل غير متاحة حاليًا.';if(settings.phone){$('phoneLink').href='tel:'+settings.phone;$('phoneLink').classList.remove('hidden');}else{$('phoneLink').classList.add('hidden');}}
+function updateSocialLink(id,value,fallback){const link=$(id),candidate=value===undefined?fallback:String(value||'').trim();let href='';if(candidate){try{const url=new URL(candidate);if(url.protocol==='http:'||url.protocol==='https:')href=url.href;}catch{}}link.href=href;link.classList.toggle('hidden',!href);}
+function updateSocialLinks(){updateSocialLink('socialFacebookLink',settings.facebookUrl,'https://www.facebook.com/kabush.center/');updateSocialLink('socialTikTokLink',settings.tiktokUrl,'https://www.tiktok.com/@kabush.store?is_from_webapp=1&sender_device=pc');const number=String(settings.whatsapp===undefined?'201094874798':settings.whatsapp||'').replace(/\D/g,'');const normalized=number.startsWith('0')?'20'+number.slice(1):number;const link=$('socialWhatsappLink');link.href=normalized?`https://wa.me/${normalized}`:'';link.classList.toggle('hidden',!normalized);}
+function applyStoreSettings(nextSettings){settings=nextSettings||{};updateContact();updateSocialLinks();if(window.setSiteIntroDuration)window.setSiteIntroDuration(settings.introDuration);try{localStorage.setItem('kaboush_settings',JSON.stringify(settings));}catch(error){console.error('تعذر حفظ نسخة محلية من إعدادات المتجر:',error);}}
 $('searchForm').addEventListener('submit',e=>{e.preventDefault();renderProducts();$('products').scrollIntoView({behavior:'smooth'});});
 $('searchInput').addEventListener('input',renderProducts);
 $('showAll').addEventListener('click',()=>{activeCategory='الكل';$('searchInput').value='';renderCategories();renderProducts();});
@@ -132,9 +135,10 @@ $('closeModal').addEventListener('click',closeModal);$('modalBackdrop').addEvent
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 function syncNavigation(){const currentHash=window.location.hash||'#home';document.querySelectorAll('.bottom-nav .nav-item[href]').forEach(item=>{const isActive=item.getAttribute('href')===currentHash;item.classList.toggle('active',isActive);if(isActive){item.setAttribute('aria-current','page');}else{item.removeAttribute('aria-current');}});}
 window.addEventListener('hashchange',syncNavigation);syncNavigation();
-$('year').textContent=new Date().getFullYear();renderCategories();renderProducts();renderOffers();saveCart();updateContact();
+$('year').textContent=new Date().getFullYear();renderCategories();renderProducts();renderOffers();saveCart();applyStoreSettings(settings);
 window.addEventListener('storage',event=>{
  if(event.key==='kaboush_offers'){offers=readStorage('kaboush_offers',[]);renderOffers();}
+if(event.key==='kaboush_settings')applyStoreSettings(readStorage('kaboush_settings',{}));
 });
 function startCloudSync(){
  const status=$('cloudStatus'),store=window.KABOUSH_STORE;
@@ -157,7 +161,7 @@ function startCloudSync(){
   status.classList.remove('hidden');
   console.error('Supabase category sync failed:',error);
  });
- store.watchSettings(items=>{settings=items;updateContact();},error=>{
+ store.watchSettings(items=>applyStoreSettings(items),error=>{
   status.textContent='تعذر تحميل بيانات التواصل من Supabase.';
   status.classList.remove('hidden');
   console.error('Supabase settings sync failed:',error);

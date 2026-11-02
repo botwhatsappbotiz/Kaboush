@@ -1,4 +1,4 @@
-const LOCAL_ADMIN_PASSWORD_HASH = '715c95ff1aad4ab7651363960f7e6cb12d169b56b45747f2c4e6cd43c5dd9bae';
+const LOCAL_ADMIN_PASSWORD_HASH = 'e5fa230b1017a87b66539992e4f3fca5a49923f7904b1a04dce2b4c40da0af81';
 let pendingAuthMessage = '';
 const $ = id => document.getElementById(id);
 let imageProcessing = Promise.resolve();
@@ -26,6 +26,10 @@ const AVAILABLE_COLORS = [
   { name: 'أصفر', value: '#e5bb35' },
   { name: 'زيتي', value: '#777844' }
 ];
+const DEFAULT_SOCIAL_LINKS = {
+  facebook: 'https://www.facebook.com/kabush.center/',
+  tiktok: 'https://www.tiktok.com/@kabush.store?is_from_webapp=1&sender_device=pc'
+};
 
 function readStorage(key, fallback) {
   try {
@@ -41,6 +45,15 @@ function showToast(message) {
   element.textContent = message;
   element.classList.add('show');
   window.setTimeout(() => element.classList.remove('show'), 2600);
+}
+
+function populateSettingsForm() {
+  $('adminWhatsapp').value = settings.whatsapp || '';
+  $('adminPhone').value = settings.phone || '';
+  $('adminHours').value = settings.hours || '';
+  $('adminFacebook').value = settings.facebookUrl === undefined ? DEFAULT_SOCIAL_LINKS.facebook : settings.facebookUrl;
+  $('adminTikTok').value = settings.tiktokUrl === undefined ? DEFAULT_SOCIAL_LINKS.tiktok : settings.tiktokUrl;
+  $('adminIntroDuration').value = settings.introDuration || 2;
 }
 
 function renderAuth() {
@@ -111,9 +124,7 @@ function showLocalAdmin() {
   $('adminSyncStatus').textContent = window.location.protocol === 'file:'
     ? 'تنبيه: الصفحة مفتوحة كملف محلي (file://)، لذلك لن تنتقل العروض إلى صفحة المتجر. افتح الموقع عبر رابط منشور أو خادم محلي.'
     : 'وضع محلي فقط — التغييرات محفوظة في هذا المتصفح ولا تتزامن مع بقية الأجهزة.';
-  $('adminWhatsapp').value = settings.whatsapp || '';
-  $('adminPhone').value = settings.phone || '';
-  $('adminHours').value = settings.hours || '';
+  populateSettingsForm();
   renderCategories();
   renderProducts();
   renderOffers();
@@ -162,9 +173,7 @@ async function showAdmin(user) {
       }, handleCloudError),
       window.KABOUSH_STORE.watchSettings(items => {
         settings = items;
-        $('adminWhatsapp').value = settings.whatsapp || '';
-        $('adminPhone').value = settings.phone || '';
-        $('adminHours').value = settings.hours || '';
+        populateSettingsForm();
       }, handleCloudError),
       window.KABOUSH_STORE.watchOffers(items => {
         offers = items;
@@ -536,13 +545,16 @@ $('settingsForm').addEventListener('submit', async event => {
   const updatedSettings = {
     whatsapp: $('adminWhatsapp').value.trim(),
     phone: $('adminPhone').value.trim(),
-    hours: $('adminHours').value.trim()
+    hours: $('adminHours').value.trim(),
+    facebookUrl: $('adminFacebook').value.trim(),
+    tiktokUrl: $('adminTikTok').value.trim(),
+    introDuration: Math.max(1, Math.min(10, Number($('adminIntroDuration').value) || 2))
   };
   if (!window.KABOUSH_STORE || !window.KABOUSH_STORE.isConfigured) {
     try {
       localStorage.setItem('kaboush_settings', JSON.stringify(updatedSettings));
       settings = updatedSettings;
-      showToast('تم حفظ بيانات التواصل على هذا الجهاز فقط.');
+      showToast('تم حفظ الإعدادات على هذا الجهاز فقط.');
     } catch {
       showToast('تعذر حفظ الإعدادات في مساحة التخزين المحلية.');
     }
@@ -550,9 +562,9 @@ $('settingsForm').addEventListener('submit', async event => {
   }
   try {
     await window.KABOUSH_STORE.saveSettings(updatedSettings);
-    showToast('تم حفظ بيانات التواصل ومزامنتها.');
+    showToast('تم حفظ الإعدادات ومزامنتها.');
   } catch (error) {
-    showToast(`تعذر حفظ بيانات التواصل: ${error.message}`);
+    showToast(`تعذر حفظ الإعدادات: ${error.message}`);
   }
 });
 
@@ -655,7 +667,10 @@ $('offerForm').addEventListener('submit', async event => {
         return;
       }
     }
-    showToast(`تعذر حفظ العرض في Supabase: ${error.message}`);
+    const missingOptionsColumn = /could not find the ['"](?:sizes|colors)['"] column of ['"]offers['"] in the schema cache/i.test(error.message || '');
+    showToast(missingOptionsColumn
+      ? 'جدول العروض يحتاج تحديثًا: نفّذ محتوى ملف supabase-offer-options.sql في Supabase SQL Editor ثم أعد المحاولة.'
+      : `تعذر حفظ العرض في Supabase: ${error.message}`);
   }
 });
 
